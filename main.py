@@ -71,9 +71,6 @@ class Anime_Info(ft.Container):
         self.box = ft.Container(content=ft.Row([self.image, self.name]), margin=ft.margin.only(left=10, right=10))
         self.top_box = ft.Row([self.back_btn, self.favorite], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
         
-        self.trailer_banner = ft.Container(content=ft.Container(**self.trailer_banner_style()), margin=ft.margin.only(top=10))
-        self.trailer_video = ft.Container(**self.trailer_video_style())
-        
         self.genres_text = ft.Container(**self.box_text_style(type="Genres"))
         self.genres_sub = ft.Container(**self.box_sub_style(size=14))
         self.genres = ft.Container(**self.box_style(), content=ft.Column([self.genres_text, self.genres_sub]))
@@ -91,7 +88,7 @@ class Anime_Info(ft.Container):
         
         
         self.box_2 = ft.Container(content=ft.Row([self.genres, self.themes, self.episodes], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), margin=ft.margin.only(top=25, left=10, right=10))
-        self.content = ft.Column([self.top_box, self.box, self.trailer_banner, self.trailer_video, self.box_2, self.synopsis_banner, self.synopsis_text], horizontal_alignment=ft.CrossAxisAlignment.START, scroll=ft.ScrollMode.ADAPTIVE)
+        self.content = ft.Column([self.top_box, self.box, self.box_2, self.synopsis_banner, self.synopsis_text], horizontal_alignment=ft.CrossAxisAlignment.START, scroll=ft.ScrollMode.ADAPTIVE)
         
                
     def image_style(self):
@@ -135,22 +132,7 @@ class Anime_Info(ft.Container):
             "border_radius": ft.border_radius.only(top_right=10, bottom_right=10),
             "content": ft.Text(value="Synopsis", size=17, weight=ft.FontWeight.BOLD, color="white")
         }
-        
-    def trailer_banner_style(self):
-        return {
-            "width": 150,
-            "height": 30,
-            "bgcolor": "#c20000",
-            "alignment": ft.alignment.center,
-            "border_radius": ft.border_radius.only(top_right=10, bottom_right=10),
-            "content": ft.Text(value="Trailer", size=17, weight=ft.FontWeight.BOLD, color="white")
-        }
-
-    def trailer_video_style(self):
-        return{
-            "padding" : ft.padding.only(left=10, right=15, bottom=15),
-        }
-
+    
     
     def match_status(self, status):
         match status:
@@ -179,9 +161,7 @@ class Anime_Info(ft.Container):
                 data = response.json()
                 
                 self.name.content.controls[0].value = data["data"]["title"]
-                self.trailer_video.content = ft.Video(aspect_ratio=16/9, autoplay=False, filter_quality=ft.FilterQuality.NONE, playlist=ft.VideoMedia(resource=data["data"]["trailer"]["url"]))
-                print(data["data"]["trailer"]["url"])
-                self.page.update()
+                
                 genres = [genre["name"] for genre in data["data"]["genres"]]
                 genres_str = "\n".join(genres)
                 self.genres_sub.content.value = genres_str
@@ -412,10 +392,8 @@ class Search_Page(ft.Container):
 
 
 def main(page: ft.Page):
-    page.window.width = 375
     page.bgcolor = "#050117"
     page.padding = 0
-    page.title = "My anime"
     
     search_page = Search_Page(page=page)
     anime_info = Anime_Info(page=page, back=None)
