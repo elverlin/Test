@@ -27,9 +27,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
     # Installe les dépendances requises pour Linux
     - name: Install Linux dependencies
       run: |
