@@ -27,6 +27,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Installe les dépendances requises pour Linux
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build libgtk-3-dev
+        
     - name: Checkout code
       uses: actions/checkout@v4
 
