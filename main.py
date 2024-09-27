@@ -1,10 +1,19 @@
 import flet as ft
 import requests
+import time
 import re
+import os
+
+# Améliorer la add anime to watch list
+# le nettoyeur de texte est un enfoiré
 
 
 
 def main(page: ft.Page):
+    page.window.width = 375
+    page.bgcolor = "#050117"
+    page.padding = 0
+    
     
     
     
@@ -45,7 +54,189 @@ def main(page: ft.Page):
             page.client_storage.remove("id")
             page.client_storage.set("id", self.id)
             self.func(e)
+
+    class Anime_Info(ft.Container):
+        def __init__(self, back):
+            super().__init__()
+            self.expand = True
+            self.visible = False
+            self.bgcolor = "#050117"
             
+            
+            self.back_btn = ft.IconButton(icon=ft.icons.ARROW_BACK_ROUNDED, on_click=back, icon_color="white")
+            self.favorite = ft.TextButton(text="Whatchlist", icon=ft.icons.ADD_BOX_ROUNDED, icon_color="red", on_click=self.add_to_list, style=ft.ButtonStyle(color="white"))
+            self.notif = ft.SnackBar(content=ft.Text("", color="white", size=15, weight=ft.FontWeight.W_400), bgcolor="#c20000")
+            page.overlay.append(self.notif)
+            
+            self.image = ft.Image(**self.image_style())
+            self.name = ft.Container(height=200, content=ft.Column([
+                                                        ft.Text(value="", size=15, weight=ft.FontWeight.BOLD, color="white", max_lines=3, overflow=ft.TextOverflow.ELLIPSIS), 
+                                                        ft.Divider(color="#6d0bb6"),
+                                                        ft.Text("Studio:", weight=ft.FontWeight.BOLD, color="white", no_wrap=True), 
+                                                        ft.Text("Type:", weight=ft.FontWeight.BOLD, color="white", no_wrap=True), 
+                                                        ft.Text("Status:", weight=ft.FontWeight.BOLD, color="white", no_wrap=True), 
+                                                        ft.Text("Note:", weight=ft.FontWeight.BOLD, color="white", no_wrap=True)]), expand=True)
+            self.box = ft.Container(content=ft.Row([self.image, self.name]), margin=ft.margin.only(left=10, right=10))
+            self.top_box = ft.Row([self.back_btn, self.favorite], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+            
+            self.genres_text = ft.Container(**self.box_text_style(type="Genres"))
+            self.genres_sub = ft.Container(**self.box_sub_style(size=14))
+            self.genres = ft.Container(**self.box_style(), content=ft.Column([self.genres_text, self.genres_sub]))
+            
+            self.themes_text = ft.Container(**self.box_text_style(type="Thèmes"))
+            self.themes_sub = ft.Container(**self.box_sub_style(size=14))
+            self.themes = ft.Container(**self.box_style(), content=ft.Column([self.themes_text, self.themes_sub]))
+            
+            self.episodes_text = ft.Container(**self.box_text_style(type="Episodes"))
+            self.episodes_sub = ft.Container(**self.box_sub_style(size=20))
+            self.episodes = ft.Container(**self.box_style(), content=ft.Column([self.episodes_text, self.episodes_sub]))
+            
+            self.synopsis_banner = ft.Container(content=ft.Container(**self.synopsis_banner_style()), margin=ft.margin.only(top=10))
+            self.synopsis_text = ft.Container(content=ft.Text(value=""), padding=ft.padding.only(left=10, right=15, bottom=15))
+            
+            
+            self.box_2 = ft.Container(content=ft.Row([self.genres, self.themes, self.episodes], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), margin=ft.margin.only(top=25, left=10, right=10))
+            self.content = ft.Column([self.top_box, self.box, self.box_2, self.synopsis_banner, self.synopsis_text], horizontal_alignment=ft.CrossAxisAlignment.START, scroll=ft.ScrollMode.ADAPTIVE)
+            
+                
+        def image_style(self):
+            return {
+                "width": 150,
+                "height": 200,
+                "src": "image.png"
+            }
+
+        def box_text_style(self, type):
+            return {
+                "width": 100,
+                "bgcolor": "#c20000",
+                "alignment": ft.alignment.center,
+                "padding": ft.padding.symmetric(vertical=5),
+                "content": ft.Text(value=type, weight=ft.FontWeight.BOLD, font_family="Roboto", color="white")
+            }
+            
+        def box_sub_style(self, size):
+            return {
+                "width": 100,
+                "height": 100,
+                "alignment": ft.alignment.center,
+                "padding": ft.padding.only(bottom=7),
+                "content": ft.Text(value="", text_align=ft.TextAlign.CENTER, font_family="Roboto", weight=ft.FontWeight.W_500, color="white", size=size)
+            }
+        
+        def box_style(self):
+            return {
+                "width": 100, 
+                "bgcolor": "#0a0329",
+                "border_radius": 10
+            }
+        
+        def synopsis_banner_style(self):
+            return {
+                "width": 150,
+                "height": 30,
+                "bgcolor": "#c20000",
+                "alignment": ft.alignment.center,
+                "border_radius": ft.border_radius.only(top_right=10, bottom_right=10),
+                "content": ft.Text(value="Synopsis", size=17, weight=ft.FontWeight.BOLD, color="white")
+            }
+        
+        
+        def match_status(self, status):
+            match status:
+                case "Finished Airing":
+                    return "Fin de diffusion"
+                
+                case "Not yet aired":
+                    return "Annoncé"
+                
+                case "Currently Airing":
+                    return "En cours"
+
+        def translate_synopsis(self, synopsis):
+            return synopsis
+
+        def get_anime(self, id):
+            url = f"https://api.jikan.moe/v4/anime/{id}/full"
+            max_retries = 4
+            retry_delay = 2
+
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(url)
+                    response.raise_for_status() 
+                    
+                    data = response.json()
+                    
+                    self.name.content.controls[0].value = data["data"]["title"]
+                    
+                    genres = [genre["name"] for genre in data["data"]["genres"]]
+                    genres_str = "\n".join(genres)
+                    self.genres_sub.content.value = genres_str
+                    
+                    themes = [theme["name"] for theme in data["data"]["themes"]]
+                    themes_str = "\n".join(themes)
+                    self.themes_sub.content.value = themes_str
+                    
+                    episodes = data["data"]["episodes"]
+                    self.episodes_sub.content.value = str(episodes)
+                    
+                    self.image.src = data["data"]["images"]["jpg"]["large_image_url"]
+                    self.synopsis_text.content.value = self.translate_synopsis(synopsis=data["data"]["synopsis"])
+                    
+                    studio = ", ".join([studio["name"] for studio in data["data"]["studios"]])
+                    type_ = data["data"]["type"]
+                    status = self.match_status(status=data["data"]["status"])
+                    rating = data["data"]["score"]
+
+                    self.name.content.controls[2].value = f"Studio:  {studio}"
+                    self.name.content.controls[3].value = f"Types:  {type_}"
+                    self.name.content.controls[4].value = f"Status:  {status}"
+                    self.name.content.controls[5].value = f"Note:  {rating}"
+                    page.update()
+                    
+                    break
+                
+                except requests.exceptions.HTTPError as http_err:
+                    print(f"Erreur HTTP : {http_err}")
+                    if response.status_code == 404:
+                        # Si l'ID de l'anime est incorrect, arrêter les tentatives
+                        break
+                except requests.exceptions.ConnectionError:
+                    print("Erreur de connexion. Nouvelle tentative...")
+                except requests.exceptions.Timeout:
+                    print("Délai d'attente dépassé. Nouvelle tentative...")
+                except requests.exceptions.RequestException as err:
+                    print(f"Erreur de requête : {err}")
+                    # Pour toute autre erreur de requête, arrêter les tentatives
+                    break
+                
+                time.sleep(retry_delay)
+                retry_delay += 2  # Augmenter le délai entre les tentatives
+        
+        def add_to_list(self, e):
+            name = self.name.content.controls[0].value
+            image_src = self.image.src
+            print(image_src)
+            dossier = "C:/Users/Abdoul Karim/3D Objects/My anime/source code/Dossier"
+            
+            os.makedirs(dossier, exist_ok=True)
+            nom_complet = f"{name}.png"
+            chemin_complet = os.path.join(dossier, nom_complet)
+            
+            response = requests.get(image_src)
+            if response.status_code == 200:
+                with open(chemin_complet, "wb") as file:
+                    file.write(response.content)
+                
+                self.notif.content.value = "Anime ajouter à la watchlist"
+                self.notif.open = True
+                self.page.update()
+            else:
+                self.notif.content.value = "Veuillez patienter et réessayer"
+                self.notif.open = True
+                self.page.update()
+
     class Anime_Results(ft.Container):
         def __init__(self, go_info):
             super().__init__()
@@ -69,7 +260,7 @@ def main(page: ft.Page):
         def search_entry_style(self):
             return{
                 "expand" : True,
-                "content" : ft.TextField(border_width=0, height=20, cursor_color="#c20000", content_padding=ft.padding.only(left=17), hint_text="Rechercher un anime")
+                "content" : ft.TextField(border_width=0, height=20, cursor_color="#c20000", content_padding=ft.padding.only(left=17), hint_text="Rechercher un anime", on_submit=self.search_anime)
             }
 
         def search_btn_style(self):
@@ -100,35 +291,28 @@ def main(page: ft.Page):
                 anime.get('title_japanese', '')
             ] + anime.get('title_synonyms', [])
             
-            # Nettoyer chaque titre et vérifier la correspondance
             for titre in titres:
                 titre_nettoye = self.nettoyer_texte(titre)
                 if any(mot in titre_nettoye for mot in mots_cles):
                     return True
+                
             return False
 
         def get_anime_results(self, nom_anime):
-            # URL de l'API Jikan pour la recherche d'anime
-            url = f"https://api.jikan.moe/v4/anime?q={nom_anime}&limit=10"
+            url = f"https://api.jikan.moe/v4/anime?q={nom_anime}&limit=20"
             
-            # Effectuer la requête GET
             response = requests.get(url)
             
-            # Vérifier si la requête a réussi
             if response.status_code == 200:
-                # Convertir la réponse en JSON
                 data = response.json()
                 
-                # Si des résultats ont été trouvés
                 if data['data']:
                     mots_cles = self.nettoyer_texte(nom_anime).split()
                     animes_filtres = [anime for anime in data['data'] if self.correspond_titre(anime, mots_cles)]
                     
                     if animes_filtres:
-                        # Trier les animes filtrés par ordre croissant de leur ID
                         animes_filtres.sort(key=lambda anime: anime['mal_id'])
                         
-                        # Retourner les informations des animes triés
                         return [
                             {
                                 "id": anime['mal_id'],
@@ -138,11 +322,14 @@ def main(page: ft.Page):
                             for anime in animes_filtres
                         ]
                     else:
-                        return "Aucun anime correspondant trouvé."
+                        self.notif.content.value = "Anime introuvable"
+                        self.notif.open = True
                 else:
-                    return "Aucun anime trouvé pour ce nom."
+                    self.notif.content.value = "Anime introuvable"
+                    self.notif.open = True
             else:
-                return f"Erreur lors de la requête : {response.status_code}"
+                self.notif.content.value = "Erreur de connexion"
+                self.notif.open = True
         
         def search_anime(self, e):
             self.charging.visible = True
@@ -165,8 +352,6 @@ def main(page: ft.Page):
                 self.charging.visible = False
                 page.update()
             else:
-                self.notif.content.value = "Anime introuvable"
-                self.notif.open = True
                 self.charging.visible = False 
                 page.update()
                 
@@ -176,9 +361,33 @@ def main(page: ft.Page):
             self.go_info(e)
             self.update()
 
+    class Search_Page(ft.Container):
+        def __init__(self):
+            super().__init__()
+            self.expand = True
+            self.visible = True
+            self.padding = ft.padding.only(right=10, left=10, top=20)
+            
+            self.anime_results = Anime_Results(go_info=self.go_info)
+            self.anime_info = Anime_Info(back=self.back)
+            
+            self.content = ft.Column([ft.Row([self.anime_results, self.anime_info])], scroll=ft.ScrollMode.ADAPTIVE)
+        
+            
+        def back(self, e):
+            self.anime_info.visible = False
+            self.anime_results.visible = True
+            self.anime_results.content.controls[1].visible = False
+            self.update()
+            
+        def go_info(self, e):
+            self.anime_info.visible = True
+            self.anime_info.get_anime(id=page.client_storage.get("id"))
+            self.anime_results.visible = False
+            self.update()
 
-
-    page.add(Anime_Results(go_info=None))
+    
+    
+    page.add(ft.SafeArea(content=Search_Page(), expand=True))
     
 ft.app(target=main)
-        
