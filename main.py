@@ -1,5 +1,6 @@
 import flet as ft
 import requests
+import time
 
 
 
@@ -200,7 +201,7 @@ def main(page: ft.Page):
                     # Pour toute autre erreur de requête, arrêter les tentatives
                     break
                 
-                
+                time.sleep(1)
                 retry_delay += 2  # Augmenter le délai entre les tentatives
         
         def add_to_list(self, e):
